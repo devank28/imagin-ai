@@ -18,6 +18,31 @@ export default function PromptInput({ onGenerate, isLoading, progress }: PromptI
   const [model, setModel] = useState<ModelOption>('nano/z-image-turbo');
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [previous, setPrevious] = useState<string | null>(null);
+
+  // Rewrites the idea into a detailed prompt with the abliterated text model.
+  const handleEnhance = useCallback(async () => {
+    if (!prompt.trim() || enhancing || isLoading) return;
+    setEnhancing(true);
+    setEnhanceError(null);
+    try {
+      const res = await fetch('/api/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim(), style: model }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.prompt) throw new Error(data.error || `Enhance failed (${res.status})`);
+      setPrevious(prompt);
+      setPrompt(data.prompt);
+    } catch (err) {
+      setEnhanceError(err instanceof Error ? err.message : 'Enhance failed');
+    } finally {
+      setEnhancing(false);
+    }
+  }, [prompt, model, enhancing, isLoading]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -49,6 +74,31 @@ export default function PromptInput({ onGenerate, isLoading, progress }: PromptI
             className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-y transition-colors"
             aria-label="Image generation prompt"
           />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleEnhance}
+              disabled={!prompt.trim() || enhancing || isLoading}
+              className="py-2 px-4 rounded-lg border border-purple-500 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              aria-label="Enhance prompt with AI"
+            >
+              {enhancing ? <LoadingSpinner size="sm" /> : <span aria-hidden>✨</span>}
+              <span>{enhancing ? 'Enhancing…' : 'Enhance prompt'}</span>
+            </button>
+            {previous !== null && !enhancing && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPrompt(previous);
+                  setPrevious(null);
+                }}
+                className="text-sm text-gray-600 dark:text-gray-400 underline"
+              >
+                Undo
+              </button>
+            )}
+            {enhanceError && <span className="text-sm text-red-600 dark:text-red-400">{enhanceError}</span>}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
