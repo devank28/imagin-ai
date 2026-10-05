@@ -1,4 +1,10 @@
-export type ModelOption = 'nano/z-image-turbo' | 'nano/hidream' | 'nano/chroma';
+export type ModelOption =
+  | 'nano/z-image-turbo'
+  | 'nano/hidream'
+  | 'nano/chroma'
+  | 'nano/cyberrealistic-xl'
+  | 'nano/cyberrealistic-pony'
+  | 'nano/wai-illustrious';
 
 export interface ImageGeneration {
   id: string;

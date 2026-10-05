@@ -12,7 +12,10 @@ export default function ModelSelector({ value, onChange, disabled = false }: Mod
   const models: { value: ModelOption; label: string }[] = [
     { value: 'nano/z-image-turbo', label: 'Z-Image Turbo' },
     { value: 'nano/hidream', label: 'HiDream' },
-    { value: 'nano/chroma', label: 'Chroma' },
+    { value: 'nano/chroma', label: 'Chroma (uncensored)' },
+    { value: 'nano/cyberrealistic-xl', label: 'CyberRealistic XL (uncensored)' },
+    { value: 'nano/cyberrealistic-pony', label: 'CyberRealistic Pony (uncensored)' },
+    { value: 'nano/wai-illustrious', label: 'WAI Illustrious, anime (uncensored)' },
   ];
 
   return (

@@ -55,6 +55,9 @@ export async function generateViaGateway(params: GenerateImageParams, signal?: A
       n: 1,
       size: `${snap(width)}x${snap(height)}`,
       response_format: 'b64_json',
+      // No provider-side safety filter: NanoGPT forwards this to models that support it
+      // and ignores it elsewhere. NanoGPT's inline moderation is opt-in and left off.
+      enable_safety_checker: false,
     }),
     signal,
   });
