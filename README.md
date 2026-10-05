@@ -58,37 +58,23 @@ Choose from available Ollama image generation models optimized for quality and s
 
 - **Node.js** v20 or higher
 - **npm**, **yarn**, **pnpm**, or **bun** package manager
-- **Ollama** installed and running (see installation steps below)
-
-> **Note:** Ollama image generation is currently only supported on **macOS**. Support for other operating systems is coming soon.
+- An **OpenAI-compatible image gateway** serving `/v1/images/generations` (this deployment uses the
+  AILogic gateway, a LiteLLM proxy with the NanoGPT models `nano/z-image-turbo`, `nano/hidream` and
+  `nano/chroma`) and a key for it
 
 ### Installation
 
-1. **Install Ollama**
-
-   Visit [ollama.ai](https://ollama.ai) and download the installer for macOS, or install via Homebrew:
+1. **Configure the gateway** in `.env.local` (git-ignored):
 
    ```bash
-   brew install ollama
+   IMAGE_GATEWAY_URL=http://127.0.0.1:4010   # base URL, without /v1
+   IMAGE_GATEWAY_KEY=sk-...                  # a key allowed to use the image models
    ```
 
-   Start the Ollama service:
+   Images come back as base64 (JPEG for the NanoGPT models) and are shown and stored as data URLs.
+   Sizes are snapped to 256-1536 px in steps of 64.
 
-   ```bash
-   ollama serve
-   ```
-
-   Keep this terminal window open while using imagin-ai.
-
-2. **Pull the Image Generation Model**
-
-   Pull the required image generation model:
-
-   ```bash
-   ollama pull x/z-image-turbo
-   ```
-
-   This will download the model (it may take a few minutes depending on your internet connection).
+2. **Model names** in `app/components/ModelSelector.tsx` must match the gateway's model names.
 
 3. **Clone and Install the Project**
 
@@ -163,7 +149,7 @@ imagin-ai/
 - **Framework**: [Next.js](https://nextjs.org/) 16.1.4 (App Router)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **UI**: [Tailwind CSS](https://tailwindcss.com/)
-- **AI**: [Ollama](https://ollama.ai/) for local image generation
+- **AI**: hosted image models through an OpenAI-compatible gateway (`/v1/images/generations`)
 - **Runtime**: Node.js v20+
 
 ## Troubleshooting

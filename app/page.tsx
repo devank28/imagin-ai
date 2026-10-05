@@ -52,7 +52,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-white/80 text-lg">
-            Create stunning images with Ollama&apos;s local AI models
+            Create stunning images with hosted AI image models
           </p>
         </header>
 

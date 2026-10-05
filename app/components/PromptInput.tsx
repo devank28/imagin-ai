@@ -15,7 +15,7 @@ interface PromptInputProps {
 
 export default function PromptInput({ onGenerate, isLoading, progress }: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState<ModelOption>('x/z-image-turbo');
+  const [model, setModel] = useState<ModelOption>('nano/z-image-turbo');
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
 
@@ -64,7 +64,7 @@ export default function PromptInput({ onGenerate, isLoading, progress }: PromptI
               value={width}
               onChange={(e) => setWidth(Number.parseInt(e.target.value) || 1024)}
               min={256}
-              max={2048}
+              max={1536}
               step={64}
               disabled={isLoading}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -82,7 +82,7 @@ export default function PromptInput({ onGenerate, isLoading, progress }: PromptI
               value={height}
               onChange={(e) => setHeight(Number.parseInt(e.target.value) || 1024)}
               min={256}
-              max={2048}
+              max={1536}
               step={64}
               disabled={isLoading}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

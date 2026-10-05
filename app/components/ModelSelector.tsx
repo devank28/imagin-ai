@@ -10,7 +10,9 @@ interface ModelSelectorProps {
 
 export default function ModelSelector({ value, onChange, disabled = false }: ModelSelectorProps) {
   const models: { value: ModelOption; label: string }[] = [
-    { value: 'x/z-image-turbo', label: 'Z-Image Turbo' },
+    { value: 'nano/z-image-turbo', label: 'Z-Image Turbo' },
+    { value: 'nano/hidream', label: 'HiDream' },
+    { value: 'nano/chroma', label: 'Chroma' },
   ];
 
   return (

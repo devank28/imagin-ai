@@ -1,185 +1,51 @@
 import { NextRequest } from 'next/server';
-import { saveResponseLog } from '../../../utils/logger';
-import { extractImageData } from '../../../utils/transform';
+import { generateViaGateway, TIMEOUT_MS } from '../../../utils/gateway';
+import { handleImageGenerationError } from '../../../utils/errorHandler';
 
-const OLLAMA_API_URL = 'http://localhost:11434/api/generate';
-const TIMEOUT_MS = 30000; // 30 seconds
-
+/**
+ * Same newline-delimited protocol the UI already speaks: progress messages, then
+ * one {type:'complete'}. The hosted gateway reports no step progress, so the
+ * stream carries a start marker and the result.
+ */
 export async function POST(request: NextRequest) {
+  let params;
   try {
-    const { prompt, model, width, height } = await request.json();
-
-    // Create abort controller for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    const response = await fetch(OLLAMA_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        width,
-        height,
-        stream: true,
-      }),
-      signal: controller.signal,
+    params = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Malformed request' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
     });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `Ollama API error: ${response.status} ${response.statusText}. ${errorText}`,
-        }),
-        {
-          status: response.status,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Create a streaming response
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        if (!reader) {
-          controller.close();
-          return;
-        }
-
-        let buffer = '';
-        let imageData: string | undefined;
-        let allDataText = '';
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-              // Process any remaining buffer content
-              if (buffer.trim()) {
-                allDataText += buffer + '\n';
-                try {
-                  const data = JSON.parse(buffer);
-                  if (data.done && data.image) {
-                    imageData = data.image;
-                  } else if (data.image) {
-                    imageData = data.image;
-                  }
-                } catch {
-                  // Skip invalid JSON
-                }
-              }
-              
-              // Save the response log
-              await saveResponseLog(allDataText);
-              
-              // Use the extractImageData utility to ensure proper extraction
-              const extractedImage = extractImageData(allDataText);
-              
-              // Use extracted image if available, otherwise use the one found during streaming
-              const finalImageData = extractedImage || imageData;
-              
-              // Send final result
-              if (finalImageData) {
-                controller.enqueue(
-                  new TextEncoder().encode(
-                    JSON.stringify({
-                      type: 'complete',
-                      success: true,
-                      imageData: finalImageData,
-                    }) + '\n'
-                  )
-                );
-              } else {
-                console.error('No image data found. Total lines processed:', allDataText.split('\n').length);
-                controller.enqueue(
-                  new TextEncoder().encode(
-                    JSON.stringify({
-                      type: 'complete',
-                      success: false,
-                      error: 'No image data found in Ollama response.',
-                    }) + '\n'
-                  )
-                );
-              }
-              controller.close();
-              break;
-            }
-
-            buffer += decoder.decode(value, { stream: true });
-            
-            // Process complete lines (ending with \n)
-            let newlineIndex;
-            while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-              const line = buffer.substring(0, newlineIndex);
-              buffer = buffer.substring(newlineIndex + 1);
-              
-              if (!line.trim()) continue;
-              allDataText += line + '\n';
-
-              try {
-                const data = JSON.parse(line);
-
-                // Send progress updates
-                if (data.completed !== undefined && data.total !== undefined) {
-                  const progress = Math.round((data.completed / data.total) * 100);
-                  controller.enqueue(
-                    new TextEncoder().encode(
-                      JSON.stringify({
-                        type: 'progress',
-                        completed: data.completed,
-                        total: data.total,
-                        progress,
-                      }) + '\n'
-                    )
-                  );
-                }
-
-                // Check for image data - prioritize done:true responses
-                if (data.done && data.image) {
-                  imageData = data.image;
-                } else if (data.image && !imageData) {
-                  // Store image if we haven't found one yet
-                  imageData = data.image;
-                }
-              } catch {
-                // Skip invalid JSON lines
-                continue;
-              }
-            }
-          }
-        } catch (error) {
-          controller.error(error);
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
   }
+  const { prompt, model, width, height } = params;
+  const encoder = new TextEncoder();
+  const send = (c: ReadableStreamDefaultController, msg: object) =>
+    c.enqueue(encoder.encode(JSON.stringify(msg) + '\n'));
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      send(controller, { type: 'progress', progress: 5, completed: 0, total: 1 });
+      const abort = new AbortController();
+      const timeoutId = setTimeout(() => abort.abort(), TIMEOUT_MS);
+      try {
+        const imageData = await generateViaGateway({ prompt, model, width, height }, abort.signal);
+        send(controller, { type: 'progress', progress: 100, completed: 1, total: 1 });
+        send(controller, { type: 'complete', success: true, imageData });
+      } catch (error) {
+        const { error: message } = handleImageGenerationError(error);
+        send(controller, { type: 'complete', success: false, error: message });
+      } finally {
+        clearTimeout(timeoutId);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
 }

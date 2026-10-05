@@ -1,4 +1,4 @@
-export type ModelOption = 'x/z-image-turbo' | 'x/flux2-klein';
+export type ModelOption = 'nano/z-image-turbo' | 'nano/hidream' | 'nano/chroma';
 
 export interface ImageGeneration {
   id: string;

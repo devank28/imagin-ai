@@ -23,6 +23,8 @@ export default function ImageDisplay({ image }: ImageDisplayProps) {
   const handleDownload = () => {
     try {
       // Convert base64 to blob
+      const mime = /^data:(image\/\w+);base64,/.exec(image.imageData)?.[1] || 'image/png';
+      const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
       const base64Data = image.imageData.replace(/^data:image\/\w+;base64,/, '');
       const byteCharacters = atob(base64Data);
       const byteNumbers = new Array(byteCharacters.length);
@@ -30,13 +32,13 @@ export default function ImageDisplay({ image }: ImageDisplayProps) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'image/png' });
+      const blob = new Blob([byteArray], { type: mime });
 
       // Create download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `generated-image-${image.timestamp}.png`;
+      link.download = `generated-image-${image.timestamp}.${ext}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

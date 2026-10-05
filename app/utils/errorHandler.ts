@@ -10,13 +10,13 @@ export function handleImageGenerationError(
     if (error.name === 'AbortError') {
       return {
         success: false,
-        error: 'Request timed out after 30 seconds. Please try again.',
+        error: 'Request timed out after 120 seconds. Please try again.',
       };
     }
     if (error.message.includes('fetch failed') || error.message.includes('ECONNREFUSED')) {
       return {
         success: false,
-        error: 'Cannot connect to Ollama. Please ensure Ollama is running on localhost:11434',
+        error: 'Cannot connect to the image gateway. Check IMAGE_GATEWAY_URL in .env.local',
       };
     }
     return {
